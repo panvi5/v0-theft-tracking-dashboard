@@ -103,7 +103,58 @@ export default function TrackingDashboard() {
   const theftTime = searchParams.get("time") || new Date().toISOString();
 
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [coordinates, setCoordinates] = useState<[number, number] | null>(null);
+  const [isGeocodingLoading, setIsGeocodingLoading] = useState(true);
+  const [geocodeError, setGeocodeError] = useState<string | null>(null);
   const VehicleIcon = vehicleIcons[vehicle] || Car;
+
+  // Geocode the location to get coordinates
+  useEffect(() => {
+    async function geocodeLocation() {
+      setIsGeocodingLoading(true);
+      setGeocodeError(null);
+      
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}&limit=1`,
+          {
+            headers: {
+              "User-Agent": "TheftTrackingApp/1.0",
+            },
+          }
+        );
+        
+        if (!response.ok) {
+          throw new Error("Geocoding failed");
+        }
+        
+        const data = await response.json();
+        
+        if (data && data.length > 0) {
+          const lat = parseFloat(data[0].lat);
+          const lon = parseFloat(data[0].lon);
+          setCoordinates([lat, lon]);
+        } else {
+          setGeocodeError("Location not found. Using default.");
+          // Default to a central location if geocoding fails
+          setCoordinates([28.6139, 77.209]);
+        }
+      } catch (error) {
+        console.error("Geocoding error:", error);
+        setGeocodeError("Geocoding failed. Using default.");
+        setCoordinates([28.6139, 77.209]);
+      } finally {
+        setIsGeocodingLoading(false);
+      }
+    }
+    
+    if (location && location !== "Unknown Location") {
+      geocodeLocation();
+    } else {
+      setCoordinates([28.6139, 77.209]);
+      setIsGeocodingLoading(false);
+    }
+  }, [location]);
 
   // Update current time every second
   useEffect(() => {
@@ -160,11 +211,24 @@ export default function TrackingDashboard() {
       <div className="flex-1 flex flex-col lg:flex-row">
         {/* Map Section */}
         <div className="flex-1 relative min-h-[400px] lg:min-h-0">
-          <TrackingMap
-            center={[28.6139, 77.209]} // Default to Delhi, India
-            radius={radius}
-            minutesPassed={minutesPassed}
-          />
+          {isGeocodingLoading ? (
+            <div className="w-full h-full flex items-center justify-center bg-card">
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+                <p className="text-muted-foreground text-sm">Locating address...</p>
+              </div>
+            </div>
+          ) : coordinates ? (
+            <TrackingMap
+              center={coordinates}
+              radius={radius}
+              minutesPassed={minutesPassed}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-card">
+              <p className="text-muted-foreground">Unable to load map</p>
+            </div>
+          )}
           
           {/* Map overlay info */}
           <div className="absolute top-4 left-4 z-[1000]">
@@ -178,6 +242,9 @@ export default function TrackingDashboard() {
                   <MapPin className="w-4 h-4" />
                   <span className="truncate max-w-[150px]">{location}</span>
                 </div>
+                {geocodeError && (
+                  <p className="text-xs text-yellow-500">{geocodeError}</p>
+                )}
               </CardContent>
             </Card>
           </div>
