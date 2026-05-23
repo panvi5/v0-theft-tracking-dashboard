@@ -204,3 +204,70 @@
 .leaflet-control-attribution a {
   color: oklch(0.55 0.25 25) !important;
 }
+
+/* Leaflet popup styling */
+.leaflet-popup-content-wrapper {
+  background: oklch(0.13 0.01 250) !important;
+  color: oklch(0.95 0 0) !important;
+  border: 1px solid oklch(0.25 0.02 250) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5) !important;
+}
+
+.leaflet-popup-tip {
+  background: oklch(0.13 0.01 250) !important;
+  border: 1px solid oklch(0.25 0.02 250) !important;
+}
+
+.leaflet-popup-close-button {
+  color: oklch(0.6 0 0) !important;
+}
+
+.leaflet-popup-close-button:hover {
+  color: oklch(0.95 0 0) !important;
+}
+
+/* Custom route tooltip */
+.leaflet-tooltip {
+  background: oklch(0.13 0.01 250 / 0.95) !important;
+  border: 1px solid oklch(0.25 0.02 250) !important;
+  border-radius: 6px !important;
+  color: oklch(0.95 0 0) !important;
+  padding: 0 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+.leaflet-tooltip-top:before,
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+  border-top-color: oklch(0.13 0.01 250) !important;
+}
+
+/* Route animation glow */
+@keyframes route-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.6));
+  }
+  50% {
+    filter: drop-shadow(0 0 15px rgba(239, 68, 68, 0.9));
+  }
+}
+
+.route-primary {
+  animation: route-glow 2s ease-in-out infinite;
+}
+
+/* Custom marker pulse */
+.custom-marker {
+  animation: marker-pulse 2s ease-in-out infinite;
+}
+
+@keyframes marker-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
