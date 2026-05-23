@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -60,7 +60,6 @@ function MapUpdater({
   const map = useMap();
 
   useEffect(() => {
-    // Adjust zoom based on radius to show the full circle
     const zoom =
       radius > 60000 ? 8 : radius > 30000 ? 9 : radius > 15000 ? 10 : 11;
     map.setView(center, zoom, { animate: true, duration: 1 });
@@ -69,111 +68,50 @@ function MapUpdater({
   return null;
 }
 
-// Generate escape routes extending outward from center
-function generateEscapeRoutes(center: [number, number], radius: number) {
-  const radiusDeg = radius / 111000; // Convert meters to degrees approximately
-  
-  const routes = [
-    // North route
-    {
-      name: "NH-44 North Highway",
-      probability: 78,
-      color: "#1e3a5f",
-      points: [
-        center,
-        [center[0] + radiusDeg * 0.3, center[1] + radiusDeg * 0.05] as [number, number],
-        [center[0] + radiusDeg * 0.6, center[1] + radiusDeg * 0.1] as [number, number],
-        [center[0] + radiusDeg * 0.9, center[1] + radiusDeg * 0.12] as [number, number],
-        [center[0] + radiusDeg * 1.2, center[1] + radiusDeg * 0.15] as [number, number],
-      ],
-    },
-    // Northeast route
-    {
-      name: "NH-24 East via Noida",
-      probability: 52,
-      color: "#1e3a5f",
-      points: [
-        center,
-        [center[0] + radiusDeg * 0.2, center[1] + radiusDeg * 0.25] as [number, number],
-        [center[0] + radiusDeg * 0.4, center[1] + radiusDeg * 0.5] as [number, number],
-        [center[0] + radiusDeg * 0.55, center[1] + radiusDeg * 0.75] as [number, number],
-        [center[0] + radiusDeg * 0.7, center[1] + radiusDeg * 1.0] as [number, number],
-      ],
-    },
-    // East route
-    {
-      name: "GT Road East",
-      probability: 45,
-      color: "#1e3a5f",
-      points: [
-        center,
-        [center[0] + radiusDeg * 0.05, center[1] + radiusDeg * 0.35] as [number, number],
-        [center[0] + radiusDeg * 0.08, center[1] + radiusDeg * 0.7] as [number, number],
-        [center[0] + radiusDeg * 0.1, center[1] + radiusDeg * 1.1] as [number, number],
-      ],
-    },
-    // Southeast route
-    {
-      name: "Agra Road South",
-      probability: 34,
-      color: "#1e3a5f",
-      points: [
-        center,
-        [center[0] - radiusDeg * 0.15, center[1] + radiusDeg * 0.3] as [number, number],
-        [center[0] - radiusDeg * 0.35, center[1] + radiusDeg * 0.6] as [number, number],
-        [center[0] - radiusDeg * 0.55, center[1] + radiusDeg * 0.85] as [number, number],
-      ],
-    },
-    // South route
-    {
-      name: "NH-48 South via Gurgaon",
-      probability: 38,
-      color: "#1e3a5f",
-      points: [
-        center,
-        [center[0] - radiusDeg * 0.3, center[1] + radiusDeg * 0.1] as [number, number],
-        [center[0] - radiusDeg * 0.6, center[1] + radiusDeg * 0.15] as [number, number],
-        [center[0] - radiusDeg * 0.95, center[1] + radiusDeg * 0.2] as [number, number],
-      ],
-    },
-    // Southwest route
-    {
-      name: "Jaipur Highway",
-      probability: 28,
-      color: "#1e3a5f",
-      points: [
-        center,
-        [center[0] - radiusDeg * 0.25, center[1] - radiusDeg * 0.2] as [number, number],
-        [center[0] - radiusDeg * 0.5, center[1] - radiusDeg * 0.45] as [number, number],
-        [center[0] - radiusDeg * 0.8, center[1] - radiusDeg * 0.7] as [number, number],
-      ],
-    },
-    // West route
-    {
-      name: "Rohtak Road West",
-      probability: 21,
-      color: "#1e3a5f",
-      points: [
-        center,
-        [center[0] + radiusDeg * 0.05, center[1] - radiusDeg * 0.35] as [number, number],
-        [center[0] + radiusDeg * 0.08, center[1] - radiusDeg * 0.7] as [number, number],
-        [center[0] + radiusDeg * 0.1, center[1] - radiusDeg * 1.1] as [number, number],
-      ],
-    },
-    // Northwest route
-    {
-      name: "Chandigarh Highway",
-      probability: 42,
-      color: "#1e3a5f",
-      points: [
-        center,
-        [center[0] + radiusDeg * 0.2, center[1] - radiusDeg * 0.25] as [number, number],
-        [center[0] + radiusDeg * 0.45, center[1] - radiusDeg * 0.5] as [number, number],
-        [center[0] + radiusDeg * 0.7, center[1] - radiusDeg * 0.75] as [number, number],
-      ],
-    },
-  ];
-  return routes;
+// Calculate destination point given distance and bearing from origin
+function calculateDestination(
+  origin: [number, number],
+  distanceKm: number,
+  bearingDeg: number
+): [number, number] {
+  const R = 6371; // Earth's radius in km
+  const lat1 = (origin[0] * Math.PI) / 180;
+  const lon1 = (origin[1] * Math.PI) / 180;
+  const bearing = (bearingDeg * Math.PI) / 180;
+  const d = distanceKm / R;
+
+  const lat2 = Math.asin(
+    Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(bearing)
+  );
+  const lon2 =
+    lon1 +
+    Math.atan2(
+      Math.sin(bearing) * Math.sin(d) * Math.cos(lat1),
+      Math.cos(d) - Math.sin(lat1) * Math.sin(lat2)
+    );
+
+  return [(lat2 * 180) / Math.PI, (lon2 * 180) / Math.PI];
+}
+
+// Route directions with bearings
+const routeDirections = [
+  { name: "North Highway", bearing: 0, probability: 78 },
+  { name: "Northeast Route", bearing: 45, probability: 52 },
+  { name: "East Highway", bearing: 90, probability: 45 },
+  { name: "Southeast Route", bearing: 135, probability: 34 },
+  { name: "South Highway", bearing: 180, probability: 38 },
+  { name: "Southwest Route", bearing: 225, probability: 28 },
+  { name: "West Highway", bearing: 270, probability: 21 },
+  { name: "Northwest Route", bearing: 315, probability: 42 },
+];
+
+interface RouteData {
+  name: string;
+  probability: number;
+  coordinates: [number, number][];
+  distance: string;
+  duration: string;
+  isLoading: boolean;
 }
 
 interface TrackingMapProps {
@@ -188,7 +126,87 @@ export default function TrackingMap({
   minutesPassed,
 }: TrackingMapProps) {
   const mapRef = useRef<L.Map>(null);
-  const routes = generateEscapeRoutes(center, radius);
+  const [routes, setRoutes] = useState<RouteData[]>([]);
+  const [isLoadingRoutes, setIsLoadingRoutes] = useState(true);
+  const fetchedRef = useRef<string>("");
+
+  // Fetch real road routes using OSRM
+  const fetchRoutes = useCallback(async () => {
+    const centerKey = `${center[0].toFixed(4)},${center[1].toFixed(4)},${radius}`;
+    if (fetchedRef.current === centerKey) return;
+    fetchedRef.current = centerKey;
+    
+    setIsLoadingRoutes(true);
+    const radiusKm = radius / 1000;
+    const destinationDistance = Math.min(radiusKm * 1.2, 100); // Extend slightly beyond radius, max 100km
+
+    const routePromises = routeDirections.map(async (dir) => {
+      const destination = calculateDestination(center, destinationDistance, dir.bearing);
+      
+      try {
+        // Use OSRM API for real road routing
+        const response = await fetch(
+          `https://router.project-osrm.org/route/v1/driving/${center[1]},${center[0]};${destination[1]},${destination[0]}?overview=full&geometries=geojson`,
+          { signal: AbortSignal.timeout(10000) }
+        );
+        
+        if (!response.ok) throw new Error("Routing failed");
+        
+        const data = await response.json();
+        
+        if (data.code === "Ok" && data.routes && data.routes[0]) {
+          const route = data.routes[0];
+          const coordinates: [number, number][] = route.geometry.coordinates.map(
+            (coord: [number, number]) => [coord[1], coord[0]] // GeoJSON is [lon, lat], Leaflet needs [lat, lon]
+          );
+          
+          return {
+            name: dir.name,
+            probability: dir.probability,
+            coordinates,
+            distance: (route.distance / 1000).toFixed(1) + " km",
+            duration: Math.round(route.duration / 60) + " min",
+            isLoading: false,
+          };
+        }
+      } catch (error) {
+        console.log(`[v0] Route fetch failed for ${dir.name}:`, error);
+      }
+      
+      // Fallback to straight line if routing fails
+      return {
+        name: dir.name,
+        probability: dir.probability,
+        coordinates: [center, destination],
+        distance: destinationDistance.toFixed(1) + " km",
+        duration: "~" + Math.round(destinationDistance * 1.5) + " min",
+        isLoading: false,
+      };
+    });
+
+    const fetchedRoutes = await Promise.all(routePromises);
+    setRoutes(fetchedRoutes);
+    setIsLoadingRoutes(false);
+  }, [center, radius]);
+
+  useEffect(() => {
+    fetchRoutes();
+  }, [fetchRoutes]);
+
+  // Get route color based on probability
+  const getRouteColor = (probability: number) => {
+    if (probability >= 70) return "#dc2626"; // Red for high probability
+    if (probability >= 50) return "#ea580c"; // Orange
+    if (probability >= 30) return "#ca8a04"; // Yellow
+    return "#1e3a5f"; // Dark blue for lower probability
+  };
+
+  const getRouteWeight = (probability: number) => {
+    if (probability >= 70) return 5;
+    if (probability >= 50) return 4;
+    if (probability >= 30) return 3;
+    return 2;
+  };
 
   return (
     <MapContainer
@@ -200,7 +218,7 @@ export default function TrackingMap({
       attributionControl={true}
       style={{ background: "#f5f5f5" }}
     >
-      {/* Standard light map tiles like in the reference */}
+      {/* Standard OpenStreetMap tiles */}
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -208,7 +226,7 @@ export default function TrackingMap({
 
       <MapUpdater center={center} radius={radius} />
 
-      {/* Single red circle radius - stroke only like reference */}
+      {/* Red circle radius */}
       <Circle
         center={center}
         radius={radius}
@@ -221,27 +239,38 @@ export default function TrackingMap({
         }}
       />
 
-      {/* Escape routes extending outward - dark blue/purple lines */}
+      {/* Real road routes - highlighted based on probability */}
       {routes.map((route, index) => (
         <Polyline
           key={`route-${index}`}
-          positions={route.points}
+          positions={route.coordinates}
           pathOptions={{
-            color: route.color,
-            weight: 2,
-            opacity: 0.7,
+            color: getRouteColor(route.probability),
+            weight: getRouteWeight(route.probability),
+            opacity: 0.85,
             lineCap: "round",
             lineJoin: "round",
           }}
         >
-          <Tooltip direction="top" offset={[0, -5]}>
-            <div className="text-xs">
-              <div className="font-semibold">{route.name}</div>
-              <div className="text-gray-600">Probability: {route.probability}%</div>
+          <Tooltip direction="top" offset={[0, -10]} sticky>
+            <div className="text-xs p-1">
+              <div className="font-bold text-sm">{route.name}</div>
+              <div className="text-gray-700">
+                Probability: <span className="font-semibold text-red-600">{route.probability}%</span>
+              </div>
+              <div className="text-gray-600">Distance: {route.distance}</div>
+              <div className="text-gray-600">Est. Time: {route.duration}</div>
             </div>
           </Tooltip>
         </Polyline>
       ))}
+
+      {/* Loading indicator for routes */}
+      {isLoadingRoutes && (
+        <div className="absolute top-4 left-4 z-[1000] bg-white px-3 py-2 rounded-lg shadow-md text-sm">
+          Loading road routes...
+        </div>
+      )}
 
       {/* Blue "Start Point" marker at theft location */}
       <Marker position={center} icon={startPointIcon}>
