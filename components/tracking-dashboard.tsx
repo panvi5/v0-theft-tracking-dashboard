@@ -18,7 +18,6 @@ import {
   Route,
   Camera,
   Fuel,
-  AlertTriangle,
   Navigation,
   Shield,
   Radar,
@@ -292,11 +291,6 @@ export default function TrackingDashboard() {
         {/* Sidebar - AI Predictions */}
         <aside className="w-full lg:w-96 border-t lg:border-t-0 lg:border-l border-border bg-card/50 overflow-y-auto">
           <div className="p-4 space-y-4">
-            <div className="flex items-center gap-2 mb-4">
-              <AlertTriangle className="w-5 h-5 text-primary" />
-              <h2 className="font-semibold text-lg">AI Predictions</h2>
-            </div>
-
             {/* Most Probable Routes */}
             <Card className="border-border/50">
               <CardHeader className="pb-2">
