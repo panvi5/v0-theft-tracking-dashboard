@@ -107,15 +107,17 @@ export default function TrackingDashboard() {
   const [geocodeError, setGeocodeError] = useState<string | null>(null);
   const VehicleIcon = vehicleIcons[vehicle] || Car;
 
-  // Geocode the location to get coordinates
+  // Geocode the location to get precise coordinates (supports addresses with door numbers)
   useEffect(() => {
     async function geocodeLocation() {
       setIsGeocodingLoading(true);
       setGeocodeError(null);
       
       try {
+        // Use Nominatim with addressdetails for precise address geocoding
+        // This supports full addresses including door numbers like "123 Main Street, City"
         const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}&limit=1`,
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}&limit=1&addressdetails=1`,
           {
             headers: {
               "User-Agent": "TheftTrackingApp/1.0",
@@ -135,7 +137,6 @@ export default function TrackingDashboard() {
           setCoordinates([lat, lon]);
         } else {
           setGeocodeError("Location not found. Using default.");
-          // Default to a central location if geocoding fails
           setCoordinates([28.6139, 77.209]);
         }
       } catch (error) {
